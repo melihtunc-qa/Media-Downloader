@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Downloader v1.0</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h2>Video İndirme Aracı</h2>
+
+      <input type="text" id="url" placeholder="Video URL'sini girin" />
+      <div><button id="selectFolder">Klasör Seç</button></div>
+      <span id="folderPath">Klasör Seçilmedi</span>
+
+      <br />
+
+      <button id="download">Videoyu İndir</button>
+      <p id="status"></p>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
