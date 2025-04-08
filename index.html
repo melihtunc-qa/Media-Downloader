@@ -12,10 +12,13 @@
 
       <input type="text" id="url" placeholder="Video URL'sini girin" />
       <div><button id="selectFolder">Klasör Seç</button></div>
-      <span id="folderPath">Klasör Seçilmedi</span>
-
-      <br />
-
+      <span id="folderPath">Klasör Seçilmedi</span><br />
+      <div class="format-options">
+        <label
+          ><input type="checkbox" value="original" checked /> Orijinal</label
+        >
+        <label><input type="checkbox" value="mp3" /> Audio</label>
+      </div>
       <button id="download">Videoyu İndir</button>
       <p id="status"></p>
     </div>

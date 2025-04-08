@@ -9,13 +9,14 @@ const ytDlpPath = path.join(__dirname, 'bin', 'yt-dlp.exe');
 
 app.whenReady().then(() => {
     mainWindow = new BrowserWindow({
-        width: 1000,
-        height: 800,
+        width: 700,
+        height: 500,
         resizable: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
-        }
+        },
+        icon: path.join(__dirname, 'bin', 'icon.png'),
     });
 
     mainWindow.loadFile('index.html');
