@@ -1,10 +1,3 @@
-window.onload = () => {
-    document.getElementById('url').focus();
-};
-
-
-
-
 const { ipcRenderer } = require('electron');
 
 document.getElementById('selectFolder').addEventListener('click', async () => {
@@ -16,37 +9,67 @@ document.getElementById('selectFolder').addEventListener('click', async () => {
 });
 
 document.getElementById('download').addEventListener('click', () => {
-    const url = document.getElementById('url').value;
+    const url = document.getElementById('url').value.trim();
     const folderPath = document.getElementById('folderPath').dataset.path;
 
     // URL doğrulama
     try {
         new URL(url);
     } catch {
-        document.getElementById('status').innerText = 'Hata: Geçersiz URL formatı!';
+        showStatus('Hata: Geçersiz URL formatı!', 'error');
         return;
     }
 
     if (!url || !folderPath) {
-        document.getElementById('status').innerText = 'Hata: URL ve hedef klasör gerekli!';
+        showStatus('Hata: URL ve hedef klasör gerekli!', 'error');
+        return;
+    }
+
+    const formats = [];
+    if (document.querySelector('input[value="original"]').checked) {
+        formats.push('original');
+    }
+
+    if (document.querySelector('input[value="mp3"]').checked) {
+        formats.push('mp3');
+    }
+
+    if (formats.length === 0) {
+        showStatus('En az bir format seçmelisiniz!', 'error');
         return;
     }
 
     // Butonları devre dışı bırak
-    document.getElementById('download').disabled = true;
-    document.getElementById('selectFolder').disabled = true;
+    toggleControls(true);
+    showStatus('İndirme başlatıldı...', 'info');
 
-    document.getElementById('status').innerText = 'İndirme başlatıldı...';
-
-    ipcRenderer.send('download-video', { url, folderPath });
+    ipcRenderer.send('download-video', { url, folderPath, formats });
 });
 
-// İndirme tamamlandığında butonları tekrar aktif et
 ipcRenderer.on('download-complete', () => {
-    document.getElementById('download').disabled = false;
-    document.getElementById('selectFolder').disabled = false;
+    toggleControls(false);
 });
 
-ipcRenderer.on('download-status', (event, message) => {
-    document.getElementById('status').innerText = message;
+ipcRenderer.on('download-status', (event, { message, type }) => {
+    showStatus(message, type);
+});
+
+// Yardımcı fonksiyonlar
+function showStatus(message, type = 'info') {
+    const statusEl = document.getElementById('status');
+    statusEl.innerText = message;
+    statusEl.className = `status ${type}`;
+}
+
+function toggleControls(disabled) {
+    document.getElementById('download').disabled = disabled;
+    document.getElementById('selectFolder').disabled = disabled;
+    document.getElementById('url').disabled = disabled;
+}
+
+// URL input alanına paste olayı ekle
+document.getElementById('url').addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text');
+    e.target.value = text.trim();
 });

@@ -7,10 +7,10 @@ let currentDownloadProcess = null;
 
 const ytDlpPath = path.join(__dirname, 'bin', 'yt-dlp.exe');
 
-app.whenReady().then(() => {
+function createWindow() {
     mainWindow = new BrowserWindow({
         width: 700,
-        height: 500,
+        height: 600,
         resizable: false,
         webPreferences: {
             nodeIntegration: true,
@@ -20,9 +20,10 @@ app.whenReady().then(() => {
     });
 
     mainWindow.loadFile('index.html');
-});
+}
 
-// Klasör seçme işlemi
+app.whenReady().then(createWindow);
+
 ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory']
@@ -30,60 +31,80 @@ ipcMain.handle('select-folder', async () => {
     return result.canceled ? null : result.filePaths[0];
 });
 
-// Video indirme işlemi
-ipcMain.on('download-video', async (event, { url, folderPath }) => {
+ipcMain.on('download-video', async (event, { url, folderPath, formats }) => {
     try {
         if (!url || !folderPath) {
-            event.reply('download-status', 'Hata: URL ve klasör yolu gerekli!');
+            event.reply('download-status', {
+                message: 'Hata: URL ve klasör yolu gerekli!',
+                type: 'error'
+            });
             return;
         }
-
 
         try {
             await checkYtDlp();
         } catch (error) {
-            event.reply('download-status', `Hata: ${error}`);
+            event.reply('download-status', {
+                message: `Hata: ${error}`,
+                type: 'error'
+            });
             return;
         }
 
-        const command = `"${ytDlpPath}" -o "${folderPath}/%(title)s.%(ext)s" "${url}"`;
+        let formatOptions = '';
+        if (formats.includes('mp3')) {
+            formatOptions += ' -x --audio-format mp3';
+        }
+        if (formats.includes('original')) {
+            formatOptions += ' -f bestvideo+bestaudio/best';
+        }
+
+        const command = `"${ytDlpPath}" ${formatOptions} -o "${folderPath}/%(title)s.%(ext)s" "${url}"`;
         const process = exec(command);
         currentDownloadProcess = process;
 
         process.stdout.on('data', (data) => {
-            event.reply('download-status', `İndirme devam ediyor: ${data}`);
+            event.reply('download-status', {
+                message: `İndirme devam ediyor: ${data}`,
+                type: 'info'
+            });
         });
 
         process.stderr.on('data', (data) => {
-            event.reply('download-status', `Uyarı: ${data}`);
+            event.reply('download-status', {
+                message: `Uyarı: ${data}`,
+                type: 'error'
+            });
         });
 
         process.on('close', (code) => {
             if (code === 0) {
-                event.reply('download-status', 'İndirme tamamlandı!');
+                event.reply('download-status', {
+                    message: 'İndirme başarıyla tamamlandı!',
+                    type: 'success'
+                });
             } else {
-                event.reply('download-status', `Hata: İşlem kodu ${code}. URL geçersiz olabilir veya indirme klasörüne yazma izniniz olmayabilir.`);
+                event.reply('download-status', {
+                    message: `Hata: İşlem başarısız oldu. URL geçersiz olabilir veya klasöre yazma izniniz olmayabilir.`,
+                    type: 'error'
+                });
             }
+            event.reply('download-complete');
         });
     } catch (error) {
-        event.reply('download-status', `Beklenmeyen hata: ${error.message}`);
+        event.reply('download-status', {
+            message: `Beklenmeyen hata: ${error.message}`,
+            type: 'error'
+        });
+        event.reply('download-complete');
     }
 });
 
-ipcMain.on('cancel-download', () => {
-    if (currentDownloadProcess) {
-        currentDownloadProcess.kill();
-        currentDownloadProcess = null;
-        event.reply('download-status', 'İndirme iptal edildi');
-    }
-});
-
-// yt-dlp'nin yüklü olup olmadığını kontrol etme
 function checkYtDlp() {
     return new Promise((resolve, reject) => {
         exec(`"${ytDlpPath}" --version`, (error) => {
             if (error) {
-                reject('yt-dlp bulunamadı. Lütfen bin klasörüne bağımlılık dosyasını yerleştirin.');
+                reject('yt-dlp bulunamadı. Lütfen bin klasörüne gerekli dosyaları yerleştirin.');
             } else {
                 resolve(true);
             }
@@ -91,7 +112,6 @@ function checkYtDlp() {
     });
 }
 
-// Uygulama kapatma olaylarını ekleyelim
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();

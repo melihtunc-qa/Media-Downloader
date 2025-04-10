@@ -3,24 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Video Downloader v1.0</title>
+    <title>Video Downloader v1.1</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="container">
       <h2>Video İndirme Aracı</h2>
 
-      <input type="text" id="url" placeholder="Video URL'sini girin" />
-      <div><button id="selectFolder">Klasör Seç</button></div>
-      <span id="folderPath">Klasör Seçilmedi</span><br />
-      <div class="format-options">
-        <label
-          ><input type="checkbox" value="original" checked /> Orijinal</label
-        >
-        <label><input type="checkbox" value="mp3" /> Audio</label>
+      <input
+        type="text"
+        id="url"
+        placeholder="Video URL'sini girin veya yapıştırın"
+        autocomplete="off"
+        spellcheck="false"
+      />
+
+      <div>
+        <button id="selectFolder">Klasör Seç</button>
       </div>
-      <button id="download">Videoyu İndir</button>
-      <p id="status"></p>
+
+      <span id="folderPath">Klasör Seçilmedi</span>
+
+      <div class="format-options">
+        <label>
+          <input type="checkbox" value="original" checked />
+          Orijinal Video
+        </label>
+        <label>
+          <input type="checkbox" value="mp3" />
+          Ses Dosyası (mp3)
+        </label>
+      </div>
+
+      <button id="download">İndirmeyi Başlat</button>
+      <p id="status" class="status"></p>
     </div>
     <script src="renderer.js"></script>
   </body>
