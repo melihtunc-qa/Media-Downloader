@@ -2,14 +2,17 @@
   "name": "video-downloader",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "main.js",
   "scripts": {
+    "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "electron": "^35.0.1"
+    "electron": "^35.0.1",
+    "tree-kill": "^1.2.2"
   }
 }

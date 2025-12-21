@@ -1,7 +1,10 @@
-const { ipcRenderer } = require('electron');
+// renderer.js
+window.onload = () => {
+    document.getElementById('url').focus();
+}
 
 document.getElementById('selectFolder').addEventListener('click', async () => {
-    const folderPath = await ipcRenderer.invoke('select-folder');
+    const folderPath = await window.electronAPI.selectFolder();
     if (folderPath) {
         document.getElementById('folderPath').innerText = `Seçilen Klasör: ${folderPath}`;
         document.getElementById('folderPath').dataset.path = folderPath;
@@ -12,7 +15,6 @@ document.getElementById('download').addEventListener('click', () => {
     const url = document.getElementById('url').value.trim();
     const folderPath = document.getElementById('folderPath').dataset.path;
 
-    // URL doğrulama
     try {
         new URL(url);
     } catch {
@@ -25,36 +27,28 @@ document.getElementById('download').addEventListener('click', () => {
         return;
     }
 
-    const formats = [];
-    if (document.querySelector('input[value="original"]').checked) {
-        formats.push('original');
-    }
-
-    if (document.querySelector('input[value="mp3"]').checked) {
-        formats.push('mp3');
-    }
-
-    if (formats.length === 0) {
-        showStatus('En az bir format seçmelisiniz!', 'error');
+    const selectedFormat = document.querySelector('input[name="format"]:checked');
+    if (!selectedFormat) {
+        showStatus('Lütfen bir format seçin!', 'error');
         return;
     }
 
-    // Butonları devre dışı bırak
+    const formats = [selectedFormat.value];
+
     toggleControls(true);
     showStatus('İndirme başlatıldı...', 'info');
 
-    ipcRenderer.send('download-video', { url, folderPath, formats });
+    window.electronAPI.downloadVideo({ url, folderPath, formats });
 });
 
-ipcRenderer.on('download-complete', () => {
+window.electronAPI.onDownloadComplete(() => {
     toggleControls(false);
 });
 
-ipcRenderer.on('download-status', (event, { message, type }) => {
+window.electronAPI.onDownloadStatus((event, { message, type }) => {
     showStatus(message, type);
 });
 
-// Yardımcı fonksiyonlar
 function showStatus(message, type = 'info') {
     const statusEl = document.getElementById('status');
     statusEl.innerText = message;
@@ -65,11 +59,21 @@ function toggleControls(disabled) {
     document.getElementById('download').disabled = disabled;
     document.getElementById('selectFolder').disabled = disabled;
     document.getElementById('url').disabled = disabled;
+    document.getElementById('cancel').style.display = disabled ? 'inline-block' : 'none';
 }
 
-// URL input alanına paste olayı ekle
 document.getElementById('url').addEventListener('paste', (e) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text');
     e.target.value = text.trim();
+});
+
+document.getElementById('cancel').addEventListener('click', () => {
+    if (window.electronAPI && window.electronAPI.cancelDownload) {
+        window.electronAPI.cancelDownload();
+        showStatus('İptal isteği gönderildi...', 'info');
+        toggleControls(false);
+    } else {
+        showStatus('İptal fonksiyonu bulunamadı!', 'error');
+    }
 });

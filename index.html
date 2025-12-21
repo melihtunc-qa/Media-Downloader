@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <select onchange="setLanguage(this.value)" id="language">
+      <option value="tr">Türkçe</option>
+      <option value="en">English</option>
+    </select>
+    <script src="lang.js"></script>
+    <script>
+      setLanguage("tr");
+    </script>
+
     <div class="container">
       <h2>Video İndirme Aracı</h2>
 
@@ -26,15 +35,15 @@
 
       <div class="format-options">
         <label>
-          <input type="checkbox" value="original" checked />
+          <input type="radio" name="format" value="original" checked />
           Orijinal Video
         </label>
         <label>
-          <input type="checkbox" value="mp3" />
+          <input type="radio" name="format" value="mp3" />
           Ses Dosyası (mp3)
         </label>
       </div>
-
+      <button id="cancel" style="display: none">İptal Et</button>
       <button id="download">İndirmeyi Başlat</button>
       <p id="status" class="status"></p>
     </div>
