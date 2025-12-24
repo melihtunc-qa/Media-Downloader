@@ -1,51 +1,102 @@
 // renderer.js
 window.onload = () => {
     document.getElementById('url').focus();
+    validateInputs();
 }
 
-document.getElementById('selectFolder').addEventListener('click', async () => {
+const urlInput = document.getElementById('url');
+const downloadBtn = document.getElementById('download');
+const selectFolderBtn = document.getElementById('selectFolder');
+const folderPathDisplay = document.getElementById('folderPath');
+const languageSelect = document.getElementById('language');
+
+// --- VALIDATION & INPUTS ---
+urlInput.addEventListener('input', validateInputs);
+urlInput.addEventListener('paste', (e) => setTimeout(validateInputs, 100));
+
+// Klasör Seçme
+selectFolderBtn.addEventListener('click', async () => {
     const folderPath = await window.electronAPI.selectFolder();
     if (folderPath) {
-        document.getElementById('folderPath').innerText = `Seçilen Klasör: ${folderPath}`;
+        const currentLang = languageSelect.value;
+        const prefix = currentLang === 'en' ? 'Selected Folder: ' : 'Seçilen Klasör: ';
+
+        document.getElementById('folderPath').innerText = `${prefix}${folderPath}`;
         document.getElementById('folderPath').dataset.path = folderPath;
+
+        folderPathDisplay.style.color = '#16a34a';
+        folderPathDisplay.style.fontWeight = 'bold';
+        validateInputs();
     }
 });
 
-document.getElementById('download').addEventListener('click', () => {
-    const url = document.getElementById('url').value.trim();
-    const folderPath = document.getElementById('folderPath').dataset.path;
+// Buton Kontrolü
+function validateInputs() {
+    const url = urlInput.value.trim();
+    const folderPath = folderPathDisplay.dataset.path;
+    const isValidUrl = url.length > 0 && (url.startsWith('http') || url.startsWith('www'));
+    const currentLang = languageSelect.value;
 
-    try {
-        new URL(url);
-    } catch {
-        showStatus('Hata: Geçersiz URL formatı!', 'error');
-        return;
-    }
+    const texts = {
+        tr: { start: 'İndirmeyi Başlat', select: 'Önce Klasör Seçin', url: 'URL Girin' },
+        en: { start: 'Start Download', select: 'Select Folder First', url: 'Enter URL' }
+    };
+    const t = texts[currentLang] || texts.tr;
 
-    if (!url || !folderPath) {
-        showStatus('Hata: URL ve hedef klasör gerekli!', 'error');
-        return;
+    if (isValidUrl && folderPath) {
+        downloadBtn.disabled = false;
+        downloadBtn.style.opacity = '1';
+        downloadBtn.style.cursor = 'pointer';
+        downloadBtn.innerText = t.start;
+    } else {
+        downloadBtn.disabled = true;
+        downloadBtn.style.opacity = '0.5';
+        downloadBtn.style.cursor = 'not-allowed';
+
+        if (!folderPath) downloadBtn.innerText = t.select;
+        else if (!isValidUrl) downloadBtn.innerText = t.url;
     }
+}
+
+// Dil değişince buton metnini güncelle
+languageSelect.addEventListener('change', () => {
+    validateInputs();
+    const folderPath = folderPathDisplay.dataset.path;
+    if (folderPath) {
+        const currentLang = languageSelect.value;
+        const prefix = currentLang === 'en' ? 'Selected Folder: ' : 'Seçilen Klasör: ';
+        document.getElementById('folderPath').innerText = `${prefix}${folderPath}`;
+    }
+});
+
+// --- İNDİRME İŞLEMİ ---
+downloadBtn.addEventListener('click', () => {
+    const url = urlInput.value.trim();
+    const folderPath = folderPathDisplay.dataset.path;
+    const language = languageSelect.value;
 
     const selectedFormat = document.querySelector('input[name="format"]:checked');
-    if (!selectedFormat) {
-        showStatus('Lütfen bir format seçin!', 'error');
-        return;
-    }
-
     const formats = [selectedFormat.value];
 
     toggleControls(true);
-    showStatus('İndirme başlatıldı...', 'info');
 
-    window.electronAPI.downloadVideo({ url, folderPath, formats });
+    const startMsg = language === 'en' ? 'Starting...' : 'Hazırlanıyor...';
+    showStatus(startMsg, 'info');
+
+    window.electronAPI.downloadVideo({ url, folderPath, formats, language });
 });
 
 window.electronAPI.onDownloadComplete(() => {
     toggleControls(false);
+    validateInputs();
 });
 
 window.electronAPI.onDownloadStatus((event, { message, type }) => {
+    // STOP mesajını çevir
+    if (message === 'STOP') {
+        const lang = languageSelect.value;
+        message = lang === 'en' ? '⛔ Download cancelled.' : '⛔ İndirme iptal edildi.';
+    }
     showStatus(message, type);
 });
 
@@ -56,24 +107,33 @@ function showStatus(message, type = 'info') {
 }
 
 function toggleControls(disabled) {
-    document.getElementById('download').disabled = disabled;
-    document.getElementById('selectFolder').disabled = disabled;
-    document.getElementById('url').disabled = disabled;
-    document.getElementById('cancel').style.display = disabled ? 'inline-block' : 'none';
+    downloadBtn.disabled = disabled;
+    selectFolderBtn.disabled = disabled;
+    urlInput.disabled = disabled;
+    languageSelect.disabled = disabled;
+
+    const cancelBtn = document.getElementById('cancel');
+    if (disabled) {
+        cancelBtn.style.display = 'inline-block';
+        downloadBtn.style.display = 'none';
+    } else {
+        cancelBtn.style.display = 'none';
+        downloadBtn.style.display = 'inline-block';
+    }
 }
 
 document.getElementById('url').addEventListener('paste', (e) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text');
     e.target.value = text.trim();
+    validateInputs();
 });
 
 document.getElementById('cancel').addEventListener('click', () => {
     if (window.electronAPI && window.electronAPI.cancelDownload) {
         window.electronAPI.cancelDownload();
-        showStatus('İptal isteği gönderildi...', 'info');
-        toggleControls(false);
-    } else {
-        showStatus('İptal fonksiyonu bulunamadı!', 'error');
+        const lang = languageSelect.value;
+        const msg = lang === 'en' ? 'Cancelling...' : 'İptal ediliyor...';
+        showStatus(msg, 'info');
     }
 });

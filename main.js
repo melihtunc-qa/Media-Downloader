@@ -2,34 +2,60 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import treeKill from 'tree-kill';
 
-// Dosya yollarını tanımla
+// --- SABİT DEĞERLER VE YOLLAR ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Yolları baştan tanımlıyoruz ki her yerde kullanabilelim
 const binPath = path.join(__dirname, 'bin');
 const ytDlpPath = path.join(binPath, 'yt-dlp.exe');
-const ffmpegPath = path.join(binPath, 'ffmpeg.exe')
+const ffmpegPath = binPath;
+
+// --- ÇOK DİLLİ SÖZLÜK ---
+const translations = {
+    tr: {
+        downloading: 'İndiriliyor',
+        merging: '⚡ Video ve Ses birleştiriliyor... (Lütfen bekleyin)',
+        converting: '🎵 Ses dosyasına dönüştürülüyor...',
+        info: '🔍 Video bilgileri alınıyor...',
+        exists: '✅ Bu dosya zaten indirilmiş.',
+        success: '🎉 İndirme başarıyla tamamlandı!',
+        process_error: 'İşlem durduruldu veya hata oluştu.',
+        start_error: 'Başlatma hatası',
+        cancelled: '⛔ İndirme iptal edildi.',
+        missing_url: 'Hata: URL ve klasör yolu gerekli!',
+        system_error: 'Sistem Hatası'
+    },
+    en: {
+        downloading: 'Downloading',
+        merging: '⚡ Merging Video and Audio... (Please wait)',
+        converting: '🎵 Converting to Audio file...',
+        info: '🔍 Fetching video information...',
+        exists: '✅ File already downloaded.',
+        success: '🎉 Download completed successfully!',
+        process_error: 'Process stopped or error occurred.',
+        start_error: 'Startup error',
+        cancelled: '⛔ Download cancelled.',
+        missing_url: 'Error: URL and folder path required!',
+        system_error: 'System Error'
+    }
+};
 
 let mainWindow;
 let currentDownloadProcess = null;
 
-// Hata yutan güvenli kapatma fonksiyonu
+// --- YARDIMCI FONKSİYONLAR ---
+
 const safeKill = (pid, callback) => {
     if (!pid) {
         if (callback) callback();
         return;
     }
-
     try {
         treeKill(pid, 'SIGKILL', (err) => {
-            if (err) {
-                // Hata olsa bile (yetki yok vb.) consola yazıp devam ediyoruz
-                console.log('Process kapatılırken önemsiz uyarı:', err.message);
-            }
+            if (err) console.log('Process kapatılırken önemsiz uyarı:', err.message);
             if (callback) callback();
         });
     } catch (e) {
@@ -37,6 +63,26 @@ const safeKill = (pid, callback) => {
         if (callback) callback();
     }
 };
+
+function checkDependencies() {
+    return new Promise((resolve, reject) => {
+        const ffmpegExe = path.join(binPath, 'ffmpeg.exe');
+        if (!fs.existsSync(ffmpegExe)) {
+            reject('FFmpeg missing! Please add ffmpeg.exe to bin folder.');
+            return;
+        }
+        const check = spawn(ytDlpPath, ['--version'], { windowsHide: true });
+        check.on('close', (code) => {
+            if (code === 0) resolve(true);
+            else reject('yt-dlp not working.');
+        });
+        check.on('error', () => {
+            reject('yt-dlp.exe not found in bin folder.');
+        });
+    });
+}
+
+// --- PENCERE YÖNETİMİ ---
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -50,41 +96,31 @@ function createWindow() {
         },
         icon: path.join(binPath, 'icon.png'),
     });
-
     mainWindow.loadFile('index.html');
 }
 
 app.whenReady().then(createWindow);
 
-// --- EKLENEN KISIM: Uygulama Kapanırken Temizlik ---
 app.on('before-quit', (event) => {
-    // Eğer arkada devam eden bir indirme varsa
     if (currentDownloadProcess) {
-        event.preventDefault(); // Kapanmayı anlık durdur
-
+        event.preventDefault();
         const pid = currentDownloadProcess.pid;
         currentDownloadProcess = null;
-
-        // İşlemi güvenli şekilde öldür, bitince uygulamadan çık
         safeKill(pid, () => {
-            app.exit(); // Şimdi zorla çıkış yap
+            app.exit();
         });
     }
 });
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// --- IPC İŞLEMLERİ ---
+// --- IPC (İLETİŞİM) İŞLEMLERİ ---
 
 ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -93,34 +129,33 @@ ipcMain.handle('select-folder', async () => {
     return result.canceled ? null : result.filePaths[0];
 });
 
-ipcMain.on('download-video', async (event, { url, folderPath, formats }) => {
+ipcMain.on('download-video', async (event, { url, folderPath, formats, language }) => {
+    // Varsayılan dil tr olsun
+    const lang = translations[language] ? language : 'tr';
+    const t = translations[lang];
+
     try {
         if (!url || !folderPath) {
             mainWindow.webContents.send('download-status', {
-                message: 'Hata: URL ve klasör yolu gerekli!',
+                message: t.missing_url,
                 type: 'error'
             });
             return;
         }
 
-        // yt-dlp var mı kontrolü
         try {
-            await checkYtDlp();
+            await checkDependencies();
         } catch (err) {
             mainWindow.webContents.send('download-status', {
-                message: `Hata: ${err}`,
+                message: `${t.system_error}: ${err}`,
                 type: 'error'
             });
+            mainWindow.webContents.send('download-complete');
             return;
         }
 
         const args = [];
-
-        // --- DÜZELTME: FFmpeg yolunu belirtiyoruz ---
-        // Bu satır olmazsa video ve ses birleşmez!
         args.push('--ffmpeg-location', ffmpegPath);
-
-        // İlerleme çubuğu formatı (regex ile yakalamak için)
         args.push('--newline');
 
         if (formats && formats.includes('mp3')) {
@@ -130,29 +165,50 @@ ipcMain.on('download-video', async (event, { url, folderPath, formats }) => {
             args.push('-f', 'bestvideo+bestaudio/best');
         }
 
-        // Çıktı formatı
         args.push('-o', `${folderPath}/%(title)s.%(ext)s`);
         args.push(url);
 
-        // İşlemi başlat
         const process = spawn(ytDlpPath, args, { windowsHide: true });
         currentDownloadProcess = process;
 
+        // --- AKILLI ÇIKTI YÖNETİMİ ---
         process.stdout.on('data', (chunk) => {
-            const data = String(chunk).trim();
-            // Boş satırları filtrele
-            if (data) {
+            const lines = String(chunk).split('\n');
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                let userMessage = line;
+
+                // Gelen teknik mesajı yakala -> Seçili dildeki karşılığını bas
+                if (line.includes('[download]') && line.includes('%')) {
+                    const percentMatch = line.match(/(\d+\.?\d*)%/);
+                    if (percentMatch) {
+                        userMessage = `${t.downloading}: %${percentMatch[1]}`;
+                    }
+                } else if (line.includes('[Merger]') || line.includes('Merging formats')) {
+                    userMessage = t.merging;
+                } else if (line.includes('[ExtractAudio]')) {
+                    userMessage = t.converting;
+                } else if (line.includes('Downloading webpage')) {
+                    userMessage = t.info;
+                } else if (line.includes('has already been downloaded')) {
+                    userMessage = t.exists;
+                } else if (line.startsWith('[youtube]')) {
+                    return;
+                }
+
                 mainWindow.webContents.send('download-status', {
-                    message: `İndiriliyor: ${data}`,
+                    message: userMessage,
                     type: 'info'
                 });
-            }
+            });
         });
 
         process.stderr.on('data', (chunk) => {
             const data = String(chunk).trim();
-            if (data) {
-                // Hata mesajı mı yoksa bilgi mi kontrol edilebilir ama şimdilik info basıyoruz
+            if (data && !data.includes('WARNING')) {
                 mainWindow.webContents.send('download-status', {
                     message: data,
                     type: 'info'
@@ -164,15 +220,16 @@ ipcMain.on('download-video', async (event, { url, folderPath, formats }) => {
             currentDownloadProcess = null;
             if (code === 0) {
                 mainWindow.webContents.send('download-status', {
-                    message: 'İşlem başarıyla tamamlandı!',
+                    message: t.success,
                     type: 'success'
                 });
             } else {
-                // Eğer manuel iptal edildiyse hata mesajı basma (PID null ise iptal edilmiştir)
-                mainWindow.webContents.send('download-status', {
-                    message: 'İşlem sonlandı.',
-                    type: 'info'
-                });
+                if (code !== null && code !== 143 && code !== -1) {
+                    mainWindow.webContents.send('download-status', {
+                        message: t.process_error,
+                        type: 'info'
+                    });
+                }
             }
             mainWindow.webContents.send('download-complete');
         });
@@ -180,7 +237,7 @@ ipcMain.on('download-video', async (event, { url, folderPath, formats }) => {
         process.on('error', (err) => {
             currentDownloadProcess = null;
             mainWindow.webContents.send('download-status', {
-                message: `Başlatma hatası: ${err.message}`,
+                message: `${t.start_error}: ${err.message}`,
                 type: 'error'
             });
             mainWindow.webContents.send('download-complete');
@@ -188,23 +245,21 @@ ipcMain.on('download-video', async (event, { url, folderPath, formats }) => {
 
     } catch (error) {
         mainWindow.webContents.send('download-status', {
-            message: `Beklenmeyen hata: ${error.message || error}`,
+            message: `Fatal Error: ${error.message || error}`,
             type: 'error'
         });
         mainWindow.webContents.send('download-complete');
     }
 });
 
-ipcMain.on('cancel-download', () => {
+ipcMain.on('cancel-download', (event) => {
     if (currentDownloadProcess && currentDownloadProcess.pid) {
         const pid = currentDownloadProcess.pid;
-        currentDownloadProcess = null; // Referansı hemen kopar
-
-        // --- DÜZELTME: safeKill kullanıyoruz ---
+        currentDownloadProcess = null;
         safeKill(pid, () => {
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('download-status', {
-                    message: 'İndirme iptal edildi.',
+                    message: 'STOP',
                     type: 'info'
                 });
                 mainWindow.webContents.send('download-complete');
@@ -216,16 +271,3 @@ ipcMain.on('cancel-download', () => {
         }
     }
 });
-
-function checkYtDlp() {
-    return new Promise((resolve, reject) => {
-        const check = spawn(ytDlpPath, ['--version'], { windowsHide: true });
-        check.on('close', (code) => {
-            if (code === 0) resolve(true);
-            else reject('yt-dlp bulunamadı (Exit Code 1).');
-        });
-        check.on('error', () => {
-            reject('yt-dlp.exe dosyası bin klasöründe bulunamadı.');
-        });
-    });
-}
