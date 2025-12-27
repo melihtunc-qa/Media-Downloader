@@ -13,7 +13,6 @@
     </select>
     <script src="lang.js"></script>
     <script>
-      // Sayfa yüklendiğinde varsayılan dili ayarla
       window.addEventListener("DOMContentLoaded", () => {
         setLanguage("tr");
       });
@@ -40,7 +39,6 @@
       <div class="format-options">
         <label>
           <input type="radio" name="format" value="original" checked />
-          <!-- Metni span içine aldık ki JS ile değiştirebilelim -->
           <span id="label-original">Orijinal Video</span>
         </label>
         <label>
@@ -49,12 +47,10 @@
         </label>
       </div>
 
-      <!-- İptal butonu gizli başlar -->
       <button id="cancel" style="display: none; background-color: #dc2626">
         İptal Et
       </button>
 
-      <!-- İndir butonu pasif başlar -->
       <button id="download" disabled style="opacity: 0.5; cursor: not-allowed">
         Önce Klasör Seçin
       </button>

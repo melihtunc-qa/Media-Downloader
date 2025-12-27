@@ -1,6 +1,6 @@
 const translations = {
     tr: {
-        title: "Video İndirme Aracı",
+        title: "Multimedya İndirme Aracı",
         startDownload: "İndirmeyi Başlat",
         cancelDownload: "İptal Et",
         selectFolder: "Klasör Seç",
@@ -12,7 +12,7 @@ const translations = {
 
     },
     en: {
-        title: "Video Downloader Tool",
+        title: "Multimedia Downloader",
         startDownload: "Start Download",
         cancelDownload: "Cancel",
         selectFolder: "Select Folder",

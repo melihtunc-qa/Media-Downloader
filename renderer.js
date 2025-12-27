@@ -1,4 +1,3 @@
-// renderer.js
 window.onload = () => {
     document.getElementById('url').focus();
     validateInputs();
@@ -10,11 +9,9 @@ const selectFolderBtn = document.getElementById('selectFolder');
 const folderPathDisplay = document.getElementById('folderPath');
 const languageSelect = document.getElementById('language');
 
-// --- VALIDATION & INPUTS ---
 urlInput.addEventListener('input', validateInputs);
 urlInput.addEventListener('paste', (e) => setTimeout(validateInputs, 100));
 
-// Klasör Seçme
 selectFolderBtn.addEventListener('click', async () => {
     const folderPath = await window.electronAPI.selectFolder();
     if (folderPath) {
@@ -30,7 +27,6 @@ selectFolderBtn.addEventListener('click', async () => {
     }
 });
 
-// Buton Kontrolü
 function validateInputs() {
     const url = urlInput.value.trim();
     const folderPath = folderPathDisplay.dataset.path;
@@ -58,7 +54,6 @@ function validateInputs() {
     }
 }
 
-// Dil değişince buton metnini güncelle
 languageSelect.addEventListener('change', () => {
     validateInputs();
     const folderPath = folderPathDisplay.dataset.path;
@@ -69,7 +64,6 @@ languageSelect.addEventListener('change', () => {
     }
 });
 
-// --- İNDİRME İŞLEMİ ---
 downloadBtn.addEventListener('click', () => {
     const url = urlInput.value.trim();
     const folderPath = folderPathDisplay.dataset.path;
@@ -92,7 +86,6 @@ window.electronAPI.onDownloadComplete(() => {
 });
 
 window.electronAPI.onDownloadStatus((event, { message, type }) => {
-    // STOP mesajını çevir
     if (message === 'STOP') {
         const lang = languageSelect.value;
         message = lang === 'en' ? '⛔ Download cancelled.' : '⛔ İndirme iptal edildi.';

@@ -1,4 +1,3 @@
-// main.js
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -6,14 +5,12 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import treeKill from 'tree-kill';
 
-// --- SABİT DEĞERLER VE YOLLAR ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const binPath = path.join(__dirname, 'bin');
 const ytDlpPath = path.join(binPath, 'yt-dlp.exe');
 const ffmpegPath = binPath;
 
-// --- ÇOK DİLLİ SÖZLÜK ---
 const translations = {
     tr: {
         downloading: 'İndiriliyor',
@@ -46,7 +43,6 @@ const translations = {
 let mainWindow;
 let currentDownloadProcess = null;
 
-// --- YARDIMCI FONKSİYONLAR ---
 
 const safeKill = (pid, callback) => {
     if (!pid) {
@@ -82,7 +78,6 @@ function checkDependencies() {
     });
 }
 
-// --- PENCERE YÖNETİMİ ---
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -120,7 +115,6 @@ app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// --- IPC (İLETİŞİM) İŞLEMLERİ ---
 
 ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -130,7 +124,6 @@ ipcMain.handle('select-folder', async () => {
 });
 
 ipcMain.on('download-video', async (event, { url, folderPath, formats, language }) => {
-    // Varsayılan dil tr olsun
     const lang = translations[language] ? language : 'tr';
     const t = translations[lang];
 
@@ -171,7 +164,6 @@ ipcMain.on('download-video', async (event, { url, folderPath, formats, language 
         const process = spawn(ytDlpPath, args, { windowsHide: true });
         currentDownloadProcess = process;
 
-        // --- AKILLI ÇIKTI YÖNETİMİ ---
         process.stdout.on('data', (chunk) => {
             const lines = String(chunk).split('\n');
 
@@ -181,7 +173,6 @@ ipcMain.on('download-video', async (event, { url, folderPath, formats, language 
 
                 let userMessage = line;
 
-                // Gelen teknik mesajı yakala -> Seçili dildeki karşılığını bas
                 if (line.includes('[download]') && line.includes('%')) {
                     const percentMatch = line.match(/(\d+\.?\d*)%/);
                     if (percentMatch) {
