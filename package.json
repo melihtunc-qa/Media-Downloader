@@ -1,6 +1,6 @@
 {
-  "name": "video-downloader",
-  "version": "1.5.0",
+  "name": "media-downloader",
+  "version": "1.0.5",
   "description": "Video ve Ses İndirici",
   "type": "module",
   "main": "main.js",
@@ -11,13 +11,14 @@
   "author": "Melih Tunç",
   "license": "ISC",
   "dependencies": {
-    "electron": "^35.0.1",
     "tree-kill": "^1.2.2"
   },
   "devDependencies": {
+    "electron": "^39.2.7",
     "electron-builder": "^24.13.3"
   },
   "build": {
+    "compression": "maximum",
     "appId": "com.video.downloader",
     "productName": "Media İndirme Aracı",
     "directories": {
@@ -34,7 +35,12 @@
     },
     "files": [
       "**/*",
-      "!bin/*"
+      "!dist",
+      "!bin",
+      "!.git",
+      "!.vscode",
+      "!**/*.ts",
+      "!*.md"
     ],
     "extraResources": [
       {
