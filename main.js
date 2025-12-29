@@ -7,7 +7,12 @@ import treeKill from 'tree-kill';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const binPath = path.join(__dirname, 'bin');
+
+const binPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'bin')
+    : path.join(__dirname, 'bin')
+
+
 const ytDlpPath = path.join(binPath, 'yt-dlp.exe');
 const ffmpegPath = binPath;
 
