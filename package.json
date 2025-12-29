@@ -1,18 +1,49 @@
 {
   "name": "video-downloader",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.5.0",
+  "description": "Video ve Ses İndirici",
   "type": "module",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "electron-builder"
   },
-  "keywords": [],
-  "author": "",
+  "author": "Melih Tunç",
   "license": "ISC",
   "dependencies": {
     "electron": "^35.0.1",
     "tree-kill": "^1.2.2"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.video.downloader",
+    "productName": "Media İndirme Aracı",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "bin/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "files": [
+      "**/*",
+      "!bin/*"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   }
 }
